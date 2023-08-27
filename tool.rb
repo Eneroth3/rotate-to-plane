@@ -63,7 +63,6 @@ class RotateToPlaneTool
   STAGE_PICK_TARGET_PLANE = 3
   
   def initialize
-    @objects
     @rotation_axis
     @start_point
     @target_plane
@@ -86,16 +85,9 @@ class RotateToPlaneTool
     # Skip selection stage if there is a pre-selection.
     unless Sketchup.active_model.selection.empty?
       @stage = STAGE_PICK_ROTATION_AXIS
-      @objects = Sketchup.active_model.selection.to_a
     end
     
     update_statusbar
-  end
-  
-  # @api
-  # @see https://ruby.sketchup.com/Sketchup/ModelObserver.html
-  def deactivate(view)
-    view.model.selection.clear
   end
   
   # @api
@@ -104,6 +96,16 @@ class RotateToPlaneTool
     if @input_point.valid?
       @input_point.draw(view)
       view.tooltip = @input_point.tooltip
+    end
+    
+    case @stage
+    when STAGE_PICK_ROTATION_AXIS
+      # REVIEW: Style as selection or an infinite dotted line?
+      # Or the former for this stage and latter for next stage?
+      # Extract infinite line drawer that finds intersections to view frustrum?
+      view.drawing_color = view.model.rendering_options["HighlightColor"]
+      view.line_width = 3
+      view.draw_line(*@rotation_axis) if @rotation_axis
     end
   end
   
@@ -147,21 +149,21 @@ class RotateToPlaneTool
       hovered = view.pick_helper.best_picked
       view.model.selection.add(hovered) if hovered
     when STAGE_PICK_ROTATION_AXIS
-      # REVIEW: May be better to just draw than select here.
-      # Now seeing duplications across component instances.
-      # Also keeps selection to the thing we are moving. Better UX and can remove tracking of @objects.
-      view.model.selection.clear
+      # Avoid actually selecting the edge as it may occur in several instances
+      # of the component and look confusing.
       pick_helper = view.pick_helper
       pick_helper.do_pick(x, y)
       hovered = view.pick_helper.picked_edge
-      view.model.selection.add(hovered)if hovered
       
       @rotation_axis = nil
       if hovered
         pick_index = pick_helper.count.times.find { |i| pick_helper.leaf_at(i) == hovered }
         transformation = pick_helper.transformation_at(pick_index)
         @rotation_axis = hovered.line.map { |c| c.transform(transformation) }
+        # HACK: Transfer length for visual height here. TODO: Take any scaling into account.
+        @rotation_axis[1].length = hovered.length
       end
+      view.invalidate
       # TODO: Handle mouse drag...
     when STAGE_PICK_START_POINT
       @input_point.pick(view, x, y)
