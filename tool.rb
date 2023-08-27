@@ -41,7 +41,7 @@ end
 # @param normal [Geom::Vector3d]
 #
 # @return [Array(Geom::Point3d, Geom::Point3d), nil]
-def intersect_plane_circle(plane, center, radius, normal)
+def intersect_plane_circle(plane, center, radius, normal) # REVIEW: Harmonize argument order with add_circle
   line = Geom.intersect_plane_plane(plane, [center, normal])
   return unless line
   
@@ -67,7 +67,7 @@ class RotateToPlaneTool
     @rotation_axis
     @start_point
     @target_plane
-    @resulting_points
+    @intersection_points
     
     @stage = STAGE_PICK_OBJECT
     
@@ -95,6 +95,7 @@ class RotateToPlaneTool
   # @api
   # @see https://ruby.sketchup.com/Sketchup/ModelObserver.html
   def deactivate(view)
+    # REVIEW: Not needed if we don't use selection to preview stuff.
     view.model.selection.clear
   end
   
@@ -120,14 +121,28 @@ class RotateToPlaneTool
     when STAGE_PICK_OBJECT
       progress_stage unless view.model.selection.empty?
     when STAGE_PICK_ROTATION_AXIS
-      progress_stage if @rotation_axis
       ### view.model.entities.add_cline(*@rotation_axis)
+      progress_stage if @rotation_axis
     when STAGE_PICK_START_POINT
       if @input_point.valid?
         progress_stage
         @start_point = @input_point.position
         @input_point.clear
         view.invalidate
+      end
+    when STAGE_PICK_TARGET_PLANE
+      if @target_plane
+        ### view.model.entities.add_circle(*@target_plane, 1, 12)
+        # REVIEW: Calculate in mouse move already to preview result?
+        center = @start_point.project_to_line(@rotation_axis)
+        radius = center.distance(@start_point)
+        normal = @rotation_axis[1]
+        ### view.model.entities.add_circle(center, normal, radius, 12)
+        @intersection_points = intersect_plane_circle(@target_plane, center, radius, normal)
+        
+        view.model.start_operation("Draw Guide Points")
+        @intersection_points.each { |pt| view.model.active_entities.add_cpoint(pt) }
+        view.model.commit_operation
       end
     end
     
@@ -168,6 +183,30 @@ class RotateToPlaneTool
       # Can't pick a rotation start point at the rotation axis.
       @input_point.clear if @input_point.position.on_line?(@rotation_axis)
       view.invalidate
+    when STAGE_PICK_TARGET_PLANE
+      view.model.selection.clear
+      pick_helper = view.pick_helper
+      pick_helper.do_pick(x, y)
+      hovered = view.pick_helper.picked_edge
+      hovered = view.pick_helper.picked_face unless hovered
+      view.model.selection.add(hovered)if hovered
+      
+      # TODO: Preview plane? Or just preview what the rotation would be?
+      @target_plane = nil
+      if hovered.is_a?(Sketchup::Face)
+        pick_index = pick_helper.count.times.find { |i| pick_helper.leaf_at(i) == hovered }
+        transformation = pick_helper.transformation_at(pick_index)
+        @target_plane = [hovered.vertices.first.position, hovered.normal].map { |c| c.transform(transformation) }
+      elsif hovered.is_a?(Sketchup::Edge)
+        # Assume a vertical plane from edge.
+        pick_index = pick_helper.count.times.find { |i| pick_helper.leaf_at(i) == hovered }
+        transformation = pick_helper.transformation_at(pick_index)
+        line = hovered.line.map { |c| c.transform(transformation) }
+        # TODO: Use drawing axes, not global axes.
+        horizontal_tangent = line[1] * Z_AXIS
+        @target_plane = [line[0], horizontal_tangent]
+      end
+      # TODO: Handle mouse drag...
     end
   end
   
