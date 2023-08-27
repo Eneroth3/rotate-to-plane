@@ -13,20 +13,20 @@
 # @return [Array(Geom::Point3d, Geom::Point3d), nil]
 def intersect_line_sphere(line, center, radius)
   # Taken from Eneroth 3D Rotate.
-  
+
   origin = line[0]
   vector = line[1].normalize
-  
+
   # Calculate distance from line's start along line to intersections
   term1 = -(vector % (origin - center))
   term2_squared =
     (vector % (origin - center))**2 -
     ((origin - center) % (origin - center)) + radius**2
   return if(term2_squared < 0)
-    
+
   term2 = Math.sqrt(term2_squared)
   # REVIEW: Return just one point if term2 is 0 (line tangents sphere)?
-  
+
   [
     origin.offset(vector, term1 + term2),
     origin.offset(vector, term1 - term2)
@@ -44,7 +44,7 @@ end
 def intersect_plane_circle(plane, center, radius, normal) # REVIEW: Harmonize argument order with add_circle
   line = Geom.intersect_plane_plane(plane, [center, normal])
   return unless line
-  
+
   intersect_line_sphere(line, center, radius)
 end
 
@@ -58,14 +58,14 @@ end
 # @return [Float] Angle in radians.
 def angle_in_plane(axis, point1, point2)
   # Based on method from Eneroth 3D Rotate.
-  
+
   point1 = point1.project_to_plane(axis)
   point2 = point2.project_to_plane(axis)
   vector1 = point1 - axis[0]
   vector2 = point2 - axis[0]
-  
+
   angle = vector1.angle_between(vector2)
-  
+
   vector1 * vector2 % axis[1] > 0 ? angle : -angle
 end
 
@@ -73,7 +73,7 @@ class RotateToPlaneTool
   # REVIEW: Can we abstract tool stages, code each of them in one place and not
   # have them all intermingled?
   # Delegate all tool interface calls to separate classes, instead of case/when?
-  
+
   # Pick object (any entity, or pre-selection)
   STAGE_PICK_OBJECT = 0
   # Pick rotation axis (click edge, press and drag for custom vector)
@@ -82,25 +82,25 @@ class RotateToPlaneTool
   STAGE_PICK_START_POINT = 2
   # Pick target plane (face, vertical plane from edge, press and drag for custom plane)
   STAGE_PICK_TARGET_PLANE = 3
-  
+
   def initialize
     @objects
     @rotation_axis
     @start_point
     @target_plane
     @intersection_points
-    
+
     @stage = STAGE_PICK_OBJECT
-    
+
     # Always drawn (if defined)
     @input_point = Sketchup::InputPoint.new
     # Used for drag vector input. Never drawn.
     @reference_input_point = Sketchup::InputPoint.new
-    
+
     # Used to identify hold-drag pattern used for custom line and plane inputs.
     @mouse_down
   end
-  
+
   # @api
   # @see https://ruby.sketchup.com/Sketchup/ModelObserver.html
   def activate
@@ -109,17 +109,17 @@ class RotateToPlaneTool
       @stage = STAGE_PICK_ROTATION_AXIS
       @objects = Sketchup.active_model.selection.to_a
     end
-    
+
     update_statusbar
   end
-  
+
   # @api
   # @see https://ruby.sketchup.com/Sketchup/ModelObserver.html
   def deactivate(view)
     # REVIEW: Not needed if we don't use selection to preview stuff.
     view.model.selection.clear
   end
-  
+
   # @api
   # @see https://ruby.sketchup.com/Sketchup/ModelObserver.html
   def draw(view)
@@ -128,16 +128,35 @@ class RotateToPlaneTool
       view.tooltip = @input_point.tooltip
     end
   end
-  
+
+  # TODO: Add onCancel
+
+  # @api
+  # @see https://ruby.sketchup.com/Sketchup/ModelObserver.html
+  def onKeyDown(key, _repeat, _flags, view)
+    # Allow changing what direction objects flips after having made the operation.
+
+    # REVIEW: Communicate with live preview and base direction on where
+    # model is hovered instead of arbitrary order to solutions?
+    # Alt key not communicated n statusbar text!
+
+    return unless key == VK_ALT
+    return unless @stage == 0 && @intersection_points
+
+    rotate_to_other_solution(view)
+  end
+
+  # @api
+  # @see https://ruby.sketchup.com/Sketchup/ModelObserver.html
   def onLButtonDown(_flags, _x, _y, _view)
     @mouse_down = true
   end
-  
+
   # @api
   # @see https://ruby.sketchup.com/Sketchup/Tool.html
   def onLButtonUp(_flags, _x, _y, view)
     @mouse_down = false
-    
+
     case @stage
     when STAGE_PICK_OBJECT
       unless view.model.selection.empty?
@@ -163,7 +182,7 @@ class RotateToPlaneTool
         normal = @rotation_axis[1]
         ### view.model.entities.add_circle(center, normal, radius, 12)
         @intersection_points = intersect_plane_circle(@target_plane, center, radius, normal)
-        
+
         if @intersection_points
           rotate_objects(view)
           reset_stage
@@ -172,10 +191,10 @@ class RotateToPlaneTool
         end
       end
     end
-    
+
     update_statusbar
   end
-  
+
   # @api
   # @see https://ruby.sketchup.com/Sketchup/Tool.html
   def onMouseMove(flags, x, y, view)
@@ -197,7 +216,7 @@ class RotateToPlaneTool
       pick_helper.do_pick(x, y)
       hovered = view.pick_helper.picked_edge
       view.model.selection.add(hovered)if hovered
-      
+
       @rotation_axis = nil
       if hovered
         pick_index = pick_helper.count.times.find { |i| pick_helper.leaf_at(i) == hovered }
@@ -217,7 +236,7 @@ class RotateToPlaneTool
       hovered = view.pick_helper.picked_edge
       hovered = view.pick_helper.picked_face unless hovered
       view.model.selection.add(hovered)if hovered
-      
+
       # TODO: Preview plane? Or just preview what the rotation would be?
       @target_plane = nil
       if hovered.is_a?(Sketchup::Face)
@@ -236,27 +255,26 @@ class RotateToPlaneTool
       # TODO: Handle mouse drag...
     end
   end
-  
-  
+
   # @api
   # @see https://ruby.sketchup.com/Sketchup/Tool.html
   def resume(view)
     view.invalidate
     update_statusbar
   end
-  
+
   private
-  
+
   def progress_stage
     @stage += 1
     update_statusbar
   end
-  
+
   def reset_stage
     @stage = 0
     update_statusbar
   end
-  
+
   def update_statusbar
     texts = [
       "Pick entity to rotate.",
@@ -264,24 +282,24 @@ class RotateToPlaneTool
       "Pick rotation start point.",
       "Pick target plane from face, edge, or hold and drag for custom plane."
     ]
-    
+
     Sketchup.status_text = texts[@stage]
   end
-  
+
   def rotate_objects(view)
     view.model.start_operation("Rotate to Plane")
-    
+
     angle = angle_in_plane(@rotation_axis, @start_point, @intersection_points.first)
     transformation = Geom::Transformation.rotation(*@rotation_axis, angle)
     view.model.active_entities.transform_entities(transformation, @objects)
-    
+
     view.model.commit_operation
   end
-  
-  # TODO: Press TAB to swap what point rotation is towards
-  def rotate_to_other_point(view)
-    @intersection_points.rotate
-    view.model.undo
+
+  # Change previously made rotation to go other direction.
+  def rotate_to_other_solution(view)
+    @intersection_points.rotate!
+    Sketchup.undo
     rotate_objects(view)
   end
 end
