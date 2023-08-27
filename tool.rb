@@ -48,6 +48,27 @@ def intersect_plane_circle(plane, center, radius, normal) # REVIEW: Harmonize ar
   intersect_line_sphere(line, center, radius)
 end
 
+# Calculate angle between two points, as seen along an axis.
+# Can return negative angles unlike Ruby APIs Vector3d.angleBetween method
+#
+# @param axis [Array(Geom::Point3d, Geom::Vector3d)]
+# @param point1 [Geom::Point3d]
+# @param point2 [Geom::Point3d]
+#
+# @return [Float] Angle in radians.
+def angle_in_plane(axis, point1, point2)
+  # Based on method from Eneroth 3D Rotate.
+  
+  point1 = point1.project_to_plane(axis)
+  point2 = point2.project_to_plane(axis)
+  vector1 = point1 - axis[0]
+  vector2 = point2 - axis[0]
+  
+  angle = vector1.angle_between(vector2)
+  
+  vector1 * vector2 % axis[1] > 0 ? angle : -angle
+end
+
 class RotateToPlaneTool
   # REVIEW: Can we abstract tool stages, code each of them in one place and not
   # have them all intermingled?
@@ -119,7 +140,10 @@ class RotateToPlaneTool
     
     case @stage
     when STAGE_PICK_OBJECT
-      progress_stage unless view.model.selection.empty?
+      unless view.model.selection.empty?
+        progress_stage
+        @objects = view.model.selection.to_a
+      end
     when STAGE_PICK_ROTATION_AXIS
       ### view.model.entities.add_cline(*@rotation_axis)
       progress_stage if @rotation_axis
@@ -140,9 +164,12 @@ class RotateToPlaneTool
         ### view.model.entities.add_circle(center, normal, radius, 12)
         @intersection_points = intersect_plane_circle(@target_plane, center, radius, normal)
         
-        view.model.start_operation("Draw Guide Points")
-        @intersection_points.each { |pt| view.model.active_entities.add_cpoint(pt) }
-        view.model.commit_operation
+        if @intersection_points
+          rotate_objects(view)
+          reset_stage
+        else
+          UI.messagebox("Can't reach plane")
+        end
       end
     end
     
@@ -225,6 +252,11 @@ class RotateToPlaneTool
     update_statusbar
   end
   
+  def reset_stage
+    @stage = 0
+    update_statusbar
+  end
+  
   def update_statusbar
     texts = [
       "Pick entity to rotate.",
@@ -235,28 +267,23 @@ class RotateToPlaneTool
     
     Sketchup.status_text = texts[@stage]
   end
+  
+  def rotate_objects(view)
+    view.model.start_operation("Rotate to Plane")
+    
+    angle = angle_in_plane(@rotation_axis, @start_point, @intersection_points.first)
+    transformation = Geom::Transformation.rotation(*@rotation_axis, angle)
+    view.model.active_entities.transform_entities(transformation, @objects)
+    
+    view.model.commit_operation
+  end
+  
+  # TODO: Press TAB to swap what point rotation is towards
+  def rotate_to_other_point(view)
+    @intersection_points.rotate
+    view.model.undo
+    rotate_objects(view)
+  end
 end
 
 Sketchup.active_model.select_tool(RotateToPlaneTool.new)
-
-=begin
-# Select Circle/Arc and Face and run snippet.
-
-# Typically work flow:
-# 1. Draw a temporary face on the plane you want the paper's side/corner to intersect.
-# 2. Draw a 2D arc around the rotation line, with the starting point at the paper's corner, to an arbitrary angle.
-# 3. Select Arc and Face.
-# 4. Run script.
-# 5. Rotate using native Rotate tool.
-# 6. Clean up help geometry.
-
-model = Sketchup.active_model
-face = model.selection.grep(Sketchup::Face).first
-circle = model.selection.grep(Sketchup::Edge).first.curve
-
-points = intersect_plane_circle(face.plane, circle.center, circle.radius, circle.normal)
-points.each { |pt| model.active_entities.add_cpoint(pt) }
-# TODO: Handle no intersection
-=end
-
-
