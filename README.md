@@ -5,4 +5,5 @@
 Rotate object to position a point perfectly on a plane.
 This is an inference ("On Radius") that's missing in the native Rotate tool.
 
-Useful e.g. for leaning a ladder against a wall, or folding paper to the right angle when making pop-up models.
+Can be used to lean a ladder against a wall but was designed and streamlined for
+folding paper to the right angle in pop-up models.
