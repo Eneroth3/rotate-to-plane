@@ -1,9 +1,3 @@
-# Rotate object to place point perfectly on a plane.
-# This is an inference ("On Radius") that's missing in the native Rotate tool.
-# Useful e.g. for making paper popup models.
-
-# TODO: Propose adding this snap to Rotate, Arc and Pie tools.
-
 # Calculate intersections between line and sphere.
 #
 # @param line [Array(Geom::Point3d, Geom::Vector3d)]
