@@ -141,8 +141,6 @@ module Eneroth
             end
           end
         end
-
-        update_statusbar
       end
 
       # @api
@@ -166,7 +164,6 @@ module Eneroth
           end
           # REVIEW: Consider adding mouse drag support for any custom plane.
           # TODO: Or otherwise remove it from the statusbar text.
-          view.invalidate
         when STAGE_PICK_START_POINT
           @input_point.pick(view, x, y)
           # Can't pick a rotation start point at the rotation axis.
@@ -174,7 +171,6 @@ module Eneroth
           # REVIEW: Consider only allowing input points within the selection.
           # Would make tool make tool more intuitive in my use case but a bit
           # more limited.
-          view.invalidate
         when STAGE_PICK_TARGET_PLANE
           @target_plane = nil
           @input_point.pick(view, x, y)
@@ -198,8 +194,8 @@ module Eneroth
           end
           # REVIEW: Consider adding mouse drag support for any custom plane.
           # TODO: Or otherwise remove it from the statusbar text.
-          view.invalidate # REVIEW: Move out of case?
         end
+        view.invalidate
       end
 
       # @api
