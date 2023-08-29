@@ -119,26 +119,18 @@ module Eneroth
           end
         when STAGE_PICK_ROTATION_AXIS
           if @rotation_axis
-            ### view.model.entities.add_cline(*@rotation_axis)
             progress_stage
-            @input_point.clear
-            view.invalidate
           end
         when STAGE_PICK_START_POINT
           if @input_point.valid?
-            progress_stage
             @start_point = @input_point.position
-            @input_point.clear
-            view.invalidate
+            progress_stage
           end
         when STAGE_PICK_TARGET_PLANE
           if @target_plane
-            ### view.model.entities.add_circle(*@target_plane, 1, 12)
-            # REVIEW: Calculate in mouse move already to preview result?
             center = @start_point.project_to_line(@rotation_axis)
             radius = center.distance(@start_point)
             normal = @rotation_axis[1]
-            ### view.model.entities.add_circle(center, normal, radius, 12)
             @intersection_points = MathHelper.intersect_plane_circle(@target_plane, center, radius, normal)
 
             if @intersection_points
@@ -201,7 +193,6 @@ module Eneroth
             horizontal_tangent = line[1] * Z_AXIS
             @target_plane = [@input_point.position, horizontal_tangent]
           end
-          # FIXME: Now rotation has different angle and I don't know why.
           # TODO: Handle mouse drag...
           view.invalidate # REVIEW: Move out of case?
         end
@@ -218,7 +209,7 @@ module Eneroth
 
       def progress_stage
         @stage += 1
-        @input_point.clear # TODO: Clear obsolete calls elsewhere
+        @input_point.clear
         update_statusbar
       end
 
