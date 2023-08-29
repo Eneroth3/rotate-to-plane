@@ -1,6 +1,7 @@
 module Eneroth
   module RotateToPlane
     Sketchup.require "#{PLUGIN_ROOT}/math_helper"
+    Sketchup.require "#{PLUGIN_ROOT}/draw_helper"
 
     # Tool for rotating objects.
     class RotateToPlaneTool
@@ -18,7 +19,6 @@ module Eneroth
       STAGE_PICK_TARGET_PLANE = 3
 
       def initialize
-        @objects
         @rotation_axis
         @start_point
         @target_plane
@@ -41,7 +41,6 @@ module Eneroth
         # Skip selection stage if there is a pre-selection.
         unless Sketchup.active_model.selection.empty?
           @stage = STAGE_PICK_ROTATION_AXIS
-          @objects = Sketchup.active_model.selection.to_a
         end
 
         update_statusbar
@@ -50,8 +49,7 @@ module Eneroth
       # @api
       # @see https://ruby.sketchup.com/Sketchup/ModelObserver.html
       def deactivate(view)
-        # REVIEW: Not needed if we don't use selection to preview stuff.
-        view.model.selection.clear
+        view.invalidate
       end
 
       # @api
@@ -60,6 +58,11 @@ module Eneroth
         if @input_point.valid?
           @input_point.draw(view)
           view.tooltip = @input_point.tooltip
+        end
+
+        if @stage == STAGE_PICK_ROTATION_AXIS && @rotation_axis
+          DrawHelper.set_color_from_line(view, @rotation_axis)
+          DrawHelper.draw_px_size_circle(view, *@rotation_axis, 50)
         end
       end
 
@@ -95,11 +98,14 @@ module Eneroth
         when STAGE_PICK_OBJECT
           unless view.model.selection.empty?
             progress_stage
-            @objects = view.model.selection.to_a
           end
         when STAGE_PICK_ROTATION_AXIS
-          ### view.model.entities.add_cline(*@rotation_axis)
-          progress_stage if @rotation_axis
+          if @rotation_axis
+            ### view.model.entities.add_cline(*@rotation_axis)
+            progress_stage
+            @input_point.clear
+            view.invalidate
+          end
         when STAGE_PICK_START_POINT
           if @input_point.valid?
             progress_stage
@@ -142,34 +148,26 @@ module Eneroth
           hovered = view.pick_helper.best_picked
           view.model.selection.add(hovered) if hovered
         when STAGE_PICK_ROTATION_AXIS
-          # REVIEW: May be better to just draw than select here.
-          # Now seeing duplications across component instances.
-          # Also keeps selection to the thing we are moving. Better UX and can remove tracking of @objects.
-          view.model.selection.clear
-          pick_helper = view.pick_helper
-          pick_helper.do_pick(x, y)
-          hovered = view.pick_helper.picked_edge
-          view.model.selection.add(hovered)if hovered
-
           @rotation_axis = nil
+          @input_point.pick(view, x, y)
+          # TODO: Support face and empty space too.
+          hovered = @input_point.edge
           if hovered
-            pick_index = pick_helper.count.times.find { |i| pick_helper.leaf_at(i) == hovered }
-            transformation = pick_helper.transformation_at(pick_index)
-            @rotation_axis = hovered.line.map { |c| c.transform(transformation) }
+            @rotation_axis = [@input_point.position, hovered.line[1].transform(@input_point.transformation)]
           end
           # TODO: Handle mouse drag...
+          view.invalidate
         when STAGE_PICK_START_POINT
           @input_point.pick(view, x, y)
           # Can't pick a rotation start point at the rotation axis.
           @input_point.clear if @input_point.position.on_line?(@rotation_axis)
           view.invalidate
         when STAGE_PICK_TARGET_PLANE
-          view.model.selection.clear
           pick_helper = view.pick_helper
           pick_helper.do_pick(x, y)
           hovered = view.pick_helper.picked_edge
           hovered = view.pick_helper.picked_face unless hovered
-          view.model.selection.add(hovered)if hovered
+          # FIXME: Currently no preview of what is hovered here!
 
           # TODO: Preview plane? Or just preview what the rotation would be?
           @target_plane = nil
@@ -225,7 +223,7 @@ module Eneroth
 
         angle = MathHelper.angle_in_plane(@rotation_axis, @start_point, @intersection_points.first)
         transformation = Geom::Transformation.rotation(*@rotation_axis, angle)
-        view.model.active_entities.transform_entities(transformation, @objects)
+        view.model.active_entities.transform_entities(transformation, view.model.selection)
 
         view.model.commit_operation
       end
