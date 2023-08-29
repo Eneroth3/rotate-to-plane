@@ -76,6 +76,11 @@ module Eneroth
             DrawHelper.draw_circle(view, center, @rotation_axis[1], radius)
             # REVIEW: Draw this circle in the next tool stage too
           end
+        when STAGE_PICK_TARGET_PLANE
+          if @target_plane
+            DrawHelper.set_color_from_line(view, @target_plane)
+            DrawHelper.draw_px_size_square(view, *@target_plane, 50)
+          end
         end
       end
 
@@ -176,28 +181,29 @@ module Eneroth
           @input_point.clear if @input_point.position.on_line?(@rotation_axis)
           view.invalidate
         when STAGE_PICK_TARGET_PLANE
-          pick_helper = view.pick_helper
-          pick_helper.do_pick(x, y)
-          hovered = view.pick_helper.picked_edge
-          hovered = view.pick_helper.picked_face unless hovered
-          # FIXME: Currently no preview of what is hovered here!
-
-          # TODO: Preview plane? Or just preview what the rotation would be?
           @target_plane = nil
+          @input_point.pick(view, x, y)
+          # TODO: Support empty space for ground plane?
+          hovered = @input_point.edge
+          hovered = @input_point.face unless hovered
           if hovered.is_a?(Sketchup::Face)
-            pick_index = pick_helper.count.times.find { |i| pick_helper.leaf_at(i) == hovered }
-            transformation = pick_helper.transformation_at(pick_index)
-            @target_plane = [hovered.vertices.first.position, hovered.normal].map { |c| c.transform(transformation) }
+            # FIXME: InputPoint.transformation returns a transformation that is
+            # not for the face if the point is not on the face but floating on
+            # top of it.
+            # See https://github.com/Eneroth3/inputpoint-refinement-lib
+            # Also, the position would be undesired in such case.
+            @target_plane = [@input_point.position, hovered.normal.transform(@input_point.transformation)]
           elsif hovered.is_a?(Sketchup::Edge)
             # Assume a vertical plane from edge.
-            pick_index = pick_helper.count.times.find { |i| pick_helper.leaf_at(i) == hovered }
-            transformation = pick_helper.transformation_at(pick_index)
-            line = hovered.line.map { |c| c.transform(transformation) }
-            # TODO: Use drawing axes, not global axes.
+            line = hovered.line.map { |c| c.transform(@input_point.transformation) }
+            # REVIEW: Use drawing axes, not global axes.
+            # TODO: Ignore vertical edges.
             horizontal_tangent = line[1] * Z_AXIS
-            @target_plane = [line[0], horizontal_tangent]
+            @target_plane = [@input_point.position, horizontal_tangent]
           end
+          # FIXME: Now rotation has different angle and I don't know why.
           # TODO: Handle mouse drag...
+          view.invalidate # REVIEW: Move out of case?
         end
       end
 
@@ -212,11 +218,13 @@ module Eneroth
 
       def progress_stage
         @stage += 1
+        @input_point.clear # TODO: Clear obsolete calls elsewhere
         update_statusbar
       end
 
       def reset_stage
         @stage = 0
+        @input_point.clear
         update_statusbar
       end
 
