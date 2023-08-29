@@ -91,12 +91,16 @@ module Eneroth
       def onKeyDown(key, _repeat, _flags, view)
         # Allow changing what direction objects flips after having made the operation.
 
-        # REVIEW: Communicate with live preview and base direction on where
-        # model is hovered instead of arbitrary order to solutions?
-        # Alt key not communicated n statusbar text!
+        # REVIEW: Communicate direction with live preview instead?
+        # Is this feature even useful since the folding direction was made to be
+        # the closest to where the target plane was selected?
 
         return unless key == VK_ALT
         return unless @stage == 0 && @intersection_points
+        # FIXME: What if selection has changed? Track selection anyway?
+        # Have a separate tracking for previous operation still being modifiable?
+        #
+        # Update update_statusbar too.
 
         rotate_to_other_solution(view)
       end
@@ -227,6 +231,7 @@ module Eneroth
           "Pick rotation start point.",
           "Pick target plane from face, edge, or hold and drag for custom plane."
         ]
+        texts[0] += " Alt = Alternate fold direction. " if @intersection_points
 
         Sketchup.status_text = texts[@stage]
       end
