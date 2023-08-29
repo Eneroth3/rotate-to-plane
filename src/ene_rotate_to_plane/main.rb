@@ -104,7 +104,7 @@ module Eneroth
       # @api
       # @see https://ruby.sketchup.com/Sketchup/ModelObserver.html
       def onLButtonDown(_flags, _x, _y, _view)
-        @mouse_down = true
+        @mouse_down = true # TODO: If not in use, remove this.
       end
 
       # @api
@@ -150,8 +150,6 @@ module Eneroth
       def onMouseMove(flags, x, y, view)
         case @stage
         when STAGE_PICK_OBJECT
-          # REVIEW: Extract generic hover picky thingy, where you set up the allowed
-          # entity on creation?
           view.model.selection.clear
           pick_helper = view.pick_helper
           pick_helper.do_pick(x, y)
@@ -160,17 +158,22 @@ module Eneroth
         when STAGE_PICK_ROTATION_AXIS
           @rotation_axis = nil
           @input_point.pick(view, x, y)
-          # TODO: Support face and empty space too.
+          # REVIEW: Consider supporting point on face and empty space too.
+          # Would make tool more open but maybe more confusing in my use case.
           hovered = @input_point.edge
           if hovered
             @rotation_axis = [@input_point.position, hovered.line[1].transform(@input_point.transformation)]
           end
-          # TODO: Handle mouse drag...
+          # REVIEW: Consider adding mouse drag support for any custom plane.
+          # TODO: Or otherwise remove it from the statusbar text.
           view.invalidate
         when STAGE_PICK_START_POINT
           @input_point.pick(view, x, y)
           # Can't pick a rotation start point at the rotation axis.
           @input_point.clear if @input_point.position.on_line?(@rotation_axis)
+          # REVIEW: Consider only allowing input points within the selection.
+          # Would make tool make tool more intuitive in my use case but a bit
+          # more limited.
           view.invalidate
         when STAGE_PICK_TARGET_PLANE
           @target_plane = nil
@@ -193,7 +196,8 @@ module Eneroth
             horizontal_tangent = line[1] * Z_AXIS
             @target_plane = [@input_point.position, horizontal_tangent]
           end
-          # TODO: Handle mouse drag...
+          # REVIEW: Consider adding mouse drag support for any custom plane.
+          # TODO: Or otherwise remove it from the statusbar text.
           view.invalidate # REVIEW: Move out of case?
         end
       end
