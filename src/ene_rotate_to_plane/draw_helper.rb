@@ -9,8 +9,8 @@ module Eneroth
       # the coordinates only?
     
       # Points approximating the unit circle in X Y plane.
-      CIRCLE_POINTS = 48.times.map do |i|
-        t = 2 * Math::PI * i / 48.0
+      CIRCLE_POINTS = 96.times.map do |i|
+        t = 2 * Math::PI * i / 96.0
         Geom::Point3d.new(Math.cos(t), Math.sin(t), 0)
       end
       

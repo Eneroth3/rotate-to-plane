@@ -55,14 +55,27 @@ module Eneroth
       # @api
       # @see https://ruby.sketchup.com/Sketchup/ModelObserver.html
       def draw(view)
+        # Always draw the input point if valid.
+        # Clear it in any tool state that's not using it.
         if @input_point.valid?
           @input_point.draw(view)
           view.tooltip = @input_point.tooltip
         end
 
-        if @stage == STAGE_PICK_ROTATION_AXIS && @rotation_axis
-          DrawHelper.set_color_from_line(view, @rotation_axis)
-          DrawHelper.draw_px_size_circle(view, *@rotation_axis, 50)
+        case @stage
+        when STAGE_PICK_ROTATION_AXIS
+          if @rotation_axis
+            DrawHelper.set_color_from_line(view, @rotation_axis)
+            DrawHelper.draw_px_size_circle(view, *@rotation_axis, 50)
+          end
+        when STAGE_PICK_START_POINT
+          if @input_point.valid?
+            center = @input_point.position.project_to_line(@rotation_axis)
+            DrawHelper.set_color_from_line(view, @rotation_axis)
+            radius = center.distance(@input_point.position)
+            DrawHelper.draw_circle(view, center, @rotation_axis[1], radius)
+            # REVIEW: Draw this circle in the next tool stage too
+          end
         end
       end
 
