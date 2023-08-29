@@ -132,8 +132,9 @@ module Eneroth
             radius = center.distance(@start_point)
             normal = @rotation_axis[1]
             @intersection_points = MathHelper.intersect_plane_circle(@target_plane, center, radius, normal)
-
             if @intersection_points
+              # By default fold the direction closest to where the user placed the target.
+              @intersection_points = @intersection_points.sort_by { |pt| pt.distance(@target_plane[0]) }
               rotate_objects(view)
               reset_stage
             else
