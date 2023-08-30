@@ -88,7 +88,10 @@ module Eneroth
         end
       end
 
-      # TODO: Add onCancel
+      def onCancel(view, _reason)
+        reset_stage
+        view.invalidate
+      end
 
       # @api
       # @see https://ruby.sketchup.com/Sketchup/ModelObserver.html
