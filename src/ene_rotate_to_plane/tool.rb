@@ -187,26 +187,24 @@ module Eneroth
         when STAGE_PICK_TARGET_PLANE
           @target_plane = nil
           @input_point.pick(view, x, y)
-          # TODO: Support empty space for ground plane?
-          hovered = @input_point.edge
-          hovered = @input_point.face unless hovered
-          if hovered.is_a?(Sketchup::Face)
+          # REVIEW: Support empty space for ground plane?
+
+          if @input_point.edge
+            # Assume a vertical plane from edge.
+            line = @input_point.edge.line.map { |c| c.transform(@input_point.transformation) }
+            # Ignore vertical edges.
+            unless line[1].parallel?(view.model.axes.zaxis)
+              horizontal_tangent = line[1] * view.model.axes.zaxis
+              @target_plane = [@input_point.position, horizontal_tangent]
+            end
+          end
+          if !@target_plane && @input_point.face
             # FIXME: InputPoint.transformation returns a transformation that is
             # not for the face if the point is not on the face but floating on
             # top of it.
             # See https://github.com/Eneroth3/inputpoint-refinement-lib
             # Also, the position would be undesired in such case.
-            @target_plane = [@input_point.position, hovered.normal.transform(@input_point.transformation)]
-          elsif hovered.is_a?(Sketchup::Edge)
-            # Assume a vertical plane from edge.
-            line = hovered.line.map { |c| c.transform(@input_point.transformation) }
-            # Ignore vertical edges.
-            # REVIEW: Maybe make this check earlier and revert to the best
-            # picked face instead.
-            unless line[1].parallel?(view.model.axes.zaxis)
-              horizontal_tangent = line[1] * view.model.axes.zaxis
-              @target_plane = [@input_point.position, horizontal_tangent]
-            end
+            @target_plane = [@input_point.position, @input_point.face.normal.transform(@input_point.transformation)]
           end
           # REVIEW: Consider adding mouse drag support for any custom plane.
           # TODO: Or otherwise remove it from the statusbar text.
