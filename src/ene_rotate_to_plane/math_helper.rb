@@ -35,11 +35,11 @@ module Eneroth
       #
       # @param plane [Array(Geom::Point3d, Geom::Vector3d), Array(Float, Float, Float, Float)]
       # @param center [Geom::Point3d]
-      # @param radius [Length]
       # @param normal [Geom::Vector3d]
+      # @param radius [Length]
       #
       # @return [Array(Geom::Point3d, Geom::Point3d), nil]
-      def self.intersect_plane_circle(plane, center, radius, normal) # REVIEW: Harmonize argument order with add_circle
+      def self.intersect_plane_circle(plane, center, normal, radius)
         line = Geom.intersect_plane_plane(plane, [center, normal])
         return unless line
 

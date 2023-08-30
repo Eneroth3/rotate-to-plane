@@ -69,21 +69,21 @@ module Eneroth
         case @stage
         when STAGE_PICK_ROTATION_AXIS
           if @rotation_axis
-            DrawHelper.set_color_from_line(view, @rotation_axis)
-            DrawHelper.draw_px_size_circle(view, *@rotation_axis, 50)
+            DrawHelper.set_color_from_vector(view, @rotation_axis[1])
+            DrawHelper.draw_circle_px_size(view, *@rotation_axis, 50)
           end
         when STAGE_PICK_START_POINT
           if @input_point.valid?
             center = @input_point.position.project_to_line(@rotation_axis)
-            DrawHelper.set_color_from_line(view, @rotation_axis)
+            DrawHelper.set_color_from_vector(view, @rotation_axis[1])
             radius = center.distance(@input_point.position)
             DrawHelper.draw_circle(view, center, @rotation_axis[1], radius)
             # REVIEW: Draw this circle in the next tool stage too
           end
         when STAGE_PICK_TARGET_PLANE
           if @target_plane
-            DrawHelper.set_color_from_line(view, @target_plane)
-            DrawHelper.draw_px_size_square(view, *@target_plane, 50)
+            DrawHelper.set_color_from_vector(view, @target_plane[1])
+            DrawHelper.draw_square_px_size(view, *@target_plane, 50)
           end
         end
       end
@@ -138,7 +138,7 @@ module Eneroth
             center = @start_point.project_to_line(@rotation_axis)
             radius = center.distance(@start_point)
             normal = @rotation_axis[1]
-            @intersection_points = MathHelper.intersect_plane_circle(@target_plane, center, radius, normal)
+            @intersection_points = MathHelper.intersect_plane_circle(@target_plane, center, normal, radius)
             if @intersection_points
               # By default fold the direction closest to where the user placed the target.
               @intersection_points = @intersection_points.sort_by { |pt| pt.distance(@target_plane[0]) }

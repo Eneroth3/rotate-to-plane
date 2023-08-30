@@ -2,12 +2,6 @@ module Eneroth
   module RotateToPlane
     # Draws things to the screen during tool usage.
     module DrawHelper
-      # REVIEW: Getting a lot of duplicated code for each new symbol to draw.
-      # What if you want to draw same thing in screen space but faded
-      # out for that X ray effect?
-      # Maybe don't make any draw calls here but use it as helpers to calculate
-      # the coordinates only? Or maybe go other way and
-
       # Points approximating the unit circle in X Y plane.
       CIRCLE_POINTS = 96.times.map do |i|
         t = 2 * Math::PI * i / 96.0
@@ -22,38 +16,70 @@ module Eneroth
         Geom::Point3d.new(0.5, -0.5, 0)
       ]
 
+      # Draw a circle to the view.
+      #
+      # @param view [Sketchup::View]
+      # @param center [Geom::Point3d]
+      # @param normal [Geom::Vector3d]
+      # @param radius [Length]
       def self.draw_circle(view, center, normal, radius)
         transformation = transformation(center, normal, radius)
         corners = CIRCLE_POINTS.map { |pt| pt.transform(transformation) }
         view.draw(GL_LINE_LOOP, corners)
       end
 
+      # Draw a circle to the view, with the radius defined in logical pixels.
+      #
+      # @param view [Sketchup::View]
+      # @param center [Geom::Point3d]
+      # @param normal [Geom::Vector3d]
+      # @param px_radius [Numeric]
+      def self.draw_circle_px_size(view, center, normal, px_radius)
+        radius = view.pixels_to_model(px_radius, center)
+        draw_circle(view, center, normal, radius)
+      end
+
+      # Draw a square to the view.
+      #
+      # @param view [Sketchup::View]
+      # @param center [Geom::Point3d]
+      # @param normal [Geom::Vector3d]
+      # @param side [Length]
       def self.draw_square(view, center, normal, side)
         transformation = transformation(center, normal, side)
         corners = SQUARE_PONTS.map { |pt| pt.transform(transformation) }
         view.draw(GL_LINE_LOOP, corners)
       end
 
-      # REVIEW: Add SketchUp protractor
-
-      # REVIEW: Make the logical pixel sized thingies be the normal ones and
-      # have the long method name for the one in model scale?
-
-      def self.draw_px_size_circle(view, center, normal, px_radius)
-        radius = view.pixels_to_model(px_radius, center)
-        draw_circle(view, center, normal, radius)
-      end
-
-      def self.draw_px_size_square(view, center, normal, px_side)
+      # Draw a square to the view, with the side defined in logical pixels.
+      #
+      # @param view [Sketchup::View]
+      # @param center [Geom::Point3d]
+      # @param normal [Geom::Vector3d]
+      # @param side [Length]
+      def self.draw_square_px_size(view, center, normal, px_side)
         side = view.pixels_to_model(px_side, center)
         draw_square(view, center, normal, side)
       end
 
-      def self.set_color_from_line(view, line)
-        view.set_color_from_line(line[0], line[0].offset(line[1]))
+      # Set the view drawing color the model axis color from a vector.
+      #
+      # @param view [Sketchup::View]
+      # @param vector [Geom::Vector3d]
+      def self.set_color_from_vector(view, vector)
+        view.set_color_from_line(ORIGIN, ORIGIN.offset(vector))
       end
 
-      # REVIEW: Make overload taking an "up" vector, if the rotation matters.
+      # Calculate transformation moving a symbol from the X Y plane into the
+      # 3d model space.
+      #
+      # @param center [Geom::Point3d]
+      # @param normal [Geom::Vector3d]
+      # @param scale [Numeric]
+      #   Use 'Sketchup::view#pixels_to_model' if the original coordinates are
+      #   in logical pixel space.
+      #
+      # @return [Geom::Transformation]
       def self.transformation(center, normal, scale)
         Geom::Transformation.new(center, normal) *
         Geom::Transformation.scaling(scale)
