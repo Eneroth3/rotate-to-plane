@@ -33,6 +33,10 @@ module Eneroth
 
         # Used to identify hold-drag pattern used for custom line and plane inputs.
         @mouse_down
+
+        # Used to track the previous tool operation so it can be altered by
+        # keyboard input.
+        @previosly_modified_objects
       end
 
       # @api
@@ -91,18 +95,14 @@ module Eneroth
       def onKeyDown(key, _repeat, _flags, view)
         # Allow changing what direction objects flips after having made the operation.
 
-        # REVIEW: Communicate direction with live preview instead?
-        # Is this feature even useful since the folding direction was made to be
-        # the closest to where the target plane was selected?
-
         return unless key == VK_ALT
-        return unless @stage == 0 && @intersection_points
-        # FIXME: What if selection has changed? Track selection anyway?
-        # Have a separate tracking for previous operation still being modifiable?
-        #
-        # Update update_statusbar too.
+        return unless @stage == 0 && @previosly_modified_objects
 
         rotate_to_other_solution(view)
+
+        # Return true to intercept SketchUp's key handling and not move focus to
+        # the menu.
+        true
       end
 
       # @api
@@ -119,6 +119,9 @@ module Eneroth
         case @stage
         when STAGE_PICK_OBJECT
           unless view.model.selection.empty?
+            # This is where the statusbar text stops mentioning Alt for changing
+            # the direction of any previous rotation.
+            @previosly_modified_objects = nil
             progress_stage
           end
         when STAGE_PICK_ROTATION_AXIS
@@ -231,7 +234,7 @@ module Eneroth
           "Pick rotation start point.",
           "Pick target plane from face, edge, or hold and drag for custom plane."
         ]
-        texts[0] += " Alt = Alternate fold direction. " if @intersection_points
+        texts[0] += " Alt = Alternate fold direction. " if @previosly_modified_objects
 
         Sketchup.status_text = texts[@stage]
       end
@@ -244,10 +247,14 @@ module Eneroth
         view.model.active_entities.transform_entities(transformation, view.model.selection)
 
         view.model.commit_operation
+
+        @previosly_modified_objects = view.model.selection.to_a
       end
 
       # Change previously made rotation to go other direction.
       def rotate_to_other_solution(view)
+        view.model.selection.clear
+        view.model.selection.add(@previosly_modified_objects)
         @intersection_points.rotate!
         Sketchup.undo
         rotate_objects(view)
