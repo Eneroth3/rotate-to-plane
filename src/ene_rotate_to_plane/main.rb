@@ -160,6 +160,8 @@ module Eneroth
           pick_helper = view.pick_helper
           pick_helper.do_pick(x, y)
           hovered = view.pick_helper.best_picked
+          # PickHelper can pick up the modeling axes.
+          hovered = nil if hovered.is_a?(Sketchup::Axes)
           view.model.selection.add(hovered) if hovered
         when STAGE_PICK_ROTATION_AXIS
           @rotation_axis = nil
