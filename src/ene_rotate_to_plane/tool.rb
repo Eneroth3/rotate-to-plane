@@ -88,7 +88,7 @@ module Eneroth
         end
       end
 
-      def onCancel(view, _reason)
+      def onCancel(_reason, view)
         reset_stage
         view.invalidate
       end
