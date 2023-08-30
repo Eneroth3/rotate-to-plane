@@ -200,12 +200,11 @@ module Eneroth
           elsif hovered.is_a?(Sketchup::Edge)
             # Assume a vertical plane from edge.
             line = hovered.line.map { |c| c.transform(@input_point.transformation) }
-            # REVIEW: Use drawing axes, not global axes.
             # Ignore vertical edges.
             # REVIEW: Maybe make this check earlier and revert to the best
             # picked face instead.
-            unless line[1].parallel?(Z_AXIS)
-              horizontal_tangent = line[1] * Z_AXIS
+            unless line[1].parallel?(view.model.axes.zaxis)
+              horizontal_tangent = line[1] * view.model.axes.zaxis
               @target_plane = [@input_point.position, horizontal_tangent]
             end
           end
