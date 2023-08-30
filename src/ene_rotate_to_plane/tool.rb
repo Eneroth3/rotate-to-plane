@@ -201,9 +201,13 @@ module Eneroth
             # Assume a vertical plane from edge.
             line = hovered.line.map { |c| c.transform(@input_point.transformation) }
             # REVIEW: Use drawing axes, not global axes.
-            # TODO: Ignore vertical edges.
-            horizontal_tangent = line[1] * Z_AXIS
-            @target_plane = [@input_point.position, horizontal_tangent]
+            # Ignore vertical edges.
+            # REVIEW: Maybe make this check earlier and revert to the best
+            # picked face instead.
+            unless line[1].parallel?(Z_AXIS)
+              horizontal_tangent = line[1] * Z_AXIS
+              @target_plane = [@input_point.position, horizontal_tangent]
+            end
           end
           # REVIEW: Consider adding mouse drag support for any custom plane.
           # TODO: Or otherwise remove it from the statusbar text.
