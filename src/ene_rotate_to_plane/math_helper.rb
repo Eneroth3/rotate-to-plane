@@ -67,6 +67,22 @@ module Eneroth
 
         vector1 * vector2 % axis[1] > 0 ? angle : -angle
       end
+
+      # When applying a sheared transformation to a normal vector, it no longer
+      # stays perpendicular to its plane. This method transforms the normal
+      # vector with the shearing in mind.
+      #
+      # @param normal [Geom::Vector3d]
+      # @param transformation [Geom::Transformation]
+      #
+      # @return [Geom::Vector3d]
+      def self.transform_normal(normal, transformation)
+        tangent, bi_tangent, _ = normal.axes
+        tangent.transform!(transformation)
+        bi_tangent.transform!(transformation)
+
+        tangent * bi_tangent
+      end
     end
   end
 end

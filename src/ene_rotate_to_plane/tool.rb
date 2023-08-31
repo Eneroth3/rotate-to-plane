@@ -204,7 +204,10 @@ module Eneroth
             # top of it.
             # See https://github.com/Eneroth3/inputpoint-refinement-lib
             # Also, the position would be undesired in such case.
-            @target_plane = [@input_point.position, @input_point.face.normal.transform(@input_point.transformation)]
+            @target_plane = [
+              @input_point.position,
+              MathHelper.transform_normal(@input_point.face.normal, @input_point.transformation)
+            ]
           end
           # REVIEW: Consider adding mouse drag support for any custom plane.
           # TODO: Or otherwise remove it from the statusbar text.
