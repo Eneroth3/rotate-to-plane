@@ -15,7 +15,7 @@ module Eneroth
     # Reload extension.
     #
     # @param clear_console [Boolean] Whether console should be cleared.
-    # @param undo [Boolean] Whether last oration should be undone.
+    # @param undo [Boolean] Whether last operation should be undone.
     #
     # @return [void]
     def self.reload(clear_console = true, undo = false)

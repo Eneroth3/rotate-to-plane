@@ -78,7 +78,6 @@ module Eneroth
             DrawHelper.set_color_from_vector(view, @rotation_axis[1])
             radius = center.distance(@input_point.position)
             DrawHelper.draw_circle(view, center, @rotation_axis[1], radius)
-            # REVIEW: Draw this circle in the next tool stage too
           end
         when STAGE_PICK_TARGET_PLANE
           if @target_plane
