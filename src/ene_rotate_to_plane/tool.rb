@@ -2,11 +2,11 @@
 
 module Eneroth
   module RotateToPlane
-    Sketchup.require "#{PLUGIN_ROOT}/math_helper"
+    Sketchup.require "#{PLUGIN_ROOT}/geom_helper"
     Sketchup.require "#{PLUGIN_ROOT}/draw_helper"
 
     # Tool for rotating objects.
-    class RotateToPlaneTool
+    class Tool
       # REVIEW: Can we abstract tool stages, code each of them in one place and not
       # have them all intermingled?
       # Delegate all tool interface calls to separate classes, instead of case/when?
@@ -20,6 +20,7 @@ module Eneroth
       # Pick target plane (face, vertical plane from edge, press and drag for custom plane)
       STAGE_PICK_TARGET_PLANE = 3
 
+      # Create tool object.
       def initialize
         @rotation_axis = nil
         @start_point = nil
@@ -142,7 +143,7 @@ module Eneroth
             center = @start_point.project_to_line(@rotation_axis)
             radius = center.distance(@start_point)
             normal = @rotation_axis[1]
-            @intersection_points = MathHelper.intersect_plane_circle(@target_plane, center, normal, radius)
+            @intersection_points = GeomHelper.intersect_plane_circle(@target_plane, center, normal, radius)
             if @intersection_points
               # By default fold the direction closest to where the user placed the target.
               @intersection_points = @intersection_points.sort_by { |pt| pt.distance(@target_plane[0]) }
@@ -207,7 +208,7 @@ module Eneroth
             # Also, the position would be undesired in such case.
             @target_plane = [
               @input_point.position,
-              MathHelper.transform_normal(@input_point.face.normal, @input_point.transformation)
+              GeomHelper.transform_normal(@input_point.face.normal, @input_point.transformation)
             ]
           end
           # REVIEW: Consider adding mouse drag support for any custom plane.
@@ -252,7 +253,7 @@ module Eneroth
       def rotate_objects(view)
         view.model.start_operation("Rotate to Plane", true)
 
-        angle = MathHelper.angle_in_plane(@rotation_axis, @start_point, @intersection_points.first)
+        angle = GeomHelper.angle_in_plane(@rotation_axis, @start_point, @intersection_points.first)
         transformation = Geom::Transformation.rotation(*@rotation_axis, angle)
         view.model.active_entities.transform_entities(transformation, view.model.selection)
 

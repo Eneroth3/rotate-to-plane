@@ -3,15 +3,21 @@
 module Eneroth
   module RotateToPlane
     Sketchup.require "#{PLUGIN_ROOT}/tool"
+    Sketchup.require "#{PLUGIN_ROOT}/tool_helper"
 
     unless @loaded
       @loaded = true
 
+      command = ToolHelper.create_command(Tool, EXTENSION.name, EXTENSION.description)
+      # TODO: Add command icon. Use UIHelper from several recent extensions.
+      # Also add for Eneroth Tool Memory.
+
+      toolbar = UI::Toolbar.new(EXTENSION.name)
+      toolbar.add_item(command)
+      toolbar.restore
+
       menu = UI.menu("Plugins")
-      menu.add_item(EXTENSION.name) do
-        tool = Eneroth::RotateToPlane::RotateToPlaneTool.new
-        Sketchup.active_model.select_tool(tool)
-      end
+      menu.add_item(command)
     end
 
     # Reload extension.
@@ -27,7 +33,7 @@ module Eneroth
       Dir.glob(File.join(PLUGIN_ROOT, "**/*.{rb,rbe}")).each { |f| load(f) }
       $VERBOSE = verbose
 
-      # Use a timer to make call to method itself register to console.
+      # HACK: Use a timer to make call to method itself register to console.
       # Otherwise the user cannot use up arrow to repeat command.
       UI.start_timer(0) { SKETCHUP_CONSOLE.clear } if clear_console
 
