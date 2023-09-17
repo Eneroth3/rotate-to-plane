@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Eneroth
   module RotateToPlane
     # Draws things to the screen during tool usage.
@@ -14,7 +16,7 @@ module Eneroth
         Geom::Point3d.new(-0.5, 0.5, 0),
         Geom::Point3d.new(-0.5, -0.5, 0),
         Geom::Point3d.new(0.5, -0.5, 0)
-      ]
+      ].freeze
 
       # Draw a circle to the view.
       #
@@ -56,7 +58,7 @@ module Eneroth
       # @param view [Sketchup::View]
       # @param center [Geom::Point3d]
       # @param normal [Geom::Vector3d]
-      # @param side [Length]
+      # @param px_side [Numeric]
       def self.draw_square_px_size(view, center, normal, px_side)
         side = view.pixels_to_model(px_side, center)
         draw_square(view, center, normal, side)
@@ -82,7 +84,7 @@ module Eneroth
       # @return [Geom::Transformation]
       def self.transformation(center, normal, scale)
         Geom::Transformation.new(center, normal) *
-        Geom::Transformation.scaling(scale)
+          Geom::Transformation.scaling(scale)
       end
     end
   end

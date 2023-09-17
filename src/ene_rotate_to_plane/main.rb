@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Eneroth
   module RotateToPlane
     Sketchup.require "#{PLUGIN_ROOT}/tool"

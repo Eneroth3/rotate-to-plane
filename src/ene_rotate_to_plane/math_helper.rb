@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Eneroth
   module RotateToPlane
     # Various lierar algebra thingies not present in the Ruby API Geom module.
@@ -6,7 +8,7 @@ module Eneroth
       #
       # @param line [Array(Geom::Point3d, Geom::Vector3d)]
       # @param center [Geom::Point3d]
-      # @param Length
+      # @param radius [Length]
       #
       # @return [Array(Geom::Point3d, Geom::Point3d), nil]
       def self.intersect_line_sphere(line, center, radius)
@@ -20,7 +22,7 @@ module Eneroth
         term2_squared =
           (vector % (origin - center))**2 -
           ((origin - center) % (origin - center)) + radius**2
-        return if(term2_squared < 0)
+        return if term2_squared < 0
 
         term2 = Math.sqrt(term2_squared)
         # REVIEW: Return just one point if term2 is 0 (line tangents sphere)?
@@ -77,7 +79,7 @@ module Eneroth
       #
       # @return [Geom::Vector3d]
       def self.transform_normal(normal, transformation)
-        tangent, bi_tangent, _ = normal.axes
+        tangent, bi_tangent = normal.axes
         tangent.transform!(transformation)
         bi_tangent.transform!(transformation)
 

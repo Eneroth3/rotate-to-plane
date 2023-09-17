@@ -1,0 +1,4 @@
+src/**/*.rb
+--no-private
+--exclude ^src/.*/vendor/
+--markup=markdown

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Eneroth
   module RotateToPlane
     Sketchup.require "#{PLUGIN_ROOT}/math_helper"
@@ -19,10 +21,10 @@ module Eneroth
       STAGE_PICK_TARGET_PLANE = 3
 
       def initialize
-        @rotation_axis
-        @start_point
-        @target_plane
-        @intersection_points
+        @rotation_axis = nil
+        @start_point = nil
+        @target_plane = nil
+        @intersection_points = nil
 
         @stage = STAGE_PICK_OBJECT
 
@@ -32,11 +34,11 @@ module Eneroth
         @reference_input_point = Sketchup::InputPoint.new
 
         # Used to identify hold-drag pattern used for custom line and plane inputs.
-        @mouse_down
+        @mouse_down = false
 
         # Used to track the previous tool operation so it can be altered by
         # keyboard input.
-        @previosly_modified_objects
+        @previosly_modified_objects = nil
       end
 
       # @api
@@ -87,6 +89,8 @@ module Eneroth
         end
       end
 
+      # @api
+      # @see https://ruby.sketchup.com/Sketchup/ModelObserver.html
       def onCancel(_reason, view)
         reset_stage
         view.invalidate
@@ -127,9 +131,7 @@ module Eneroth
             progress_stage
           end
         when STAGE_PICK_ROTATION_AXIS
-          if @rotation_axis
-            progress_stage
-          end
+          progress_stage if @rotation_axis
         when STAGE_PICK_START_POINT
           if @input_point.valid?
             @start_point = @input_point.position
@@ -155,7 +157,7 @@ module Eneroth
 
       # @api
       # @see https://ruby.sketchup.com/Sketchup/Tool.html
-      def onMouseMove(flags, x, y, view)
+      def onMouseMove(_flags, x, y, view)
         case @stage
         when STAGE_PICK_OBJECT
           view.model.selection.clear
@@ -248,7 +250,7 @@ module Eneroth
       end
 
       def rotate_objects(view)
-        view.model.start_operation("Rotate to Plane")
+        view.model.start_operation("Rotate to Plane", true)
 
         angle = MathHelper.angle_in_plane(@rotation_axis, @start_point, @intersection_points.first)
         transformation = Geom::Transformation.rotation(*@rotation_axis, angle)
