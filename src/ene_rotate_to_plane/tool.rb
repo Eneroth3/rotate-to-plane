@@ -20,6 +20,12 @@ module Eneroth
       # Pick target plane (face, vertical plane from edge, press and drag for custom plane)
       STAGE_PICK_TARGET_PLANE = 3
 
+      # Distance in logical pixels needed between current mouse position and
+      # mouse down position for it to count as a drag action. Non-zero to avoid
+      # quick clicks before the cursor has fully stopped to be unintentionally
+      # registered as drags.
+      DRAG_THRESHOLD = 5
+
       # Create tool object.
       def initialize
         @rotation_axis = nil
@@ -34,8 +40,10 @@ module Eneroth
         # Used for drag vector input. Never drawn.
         @reference_input_point = Sketchup::InputPoint.new
 
+        @mouse_position = nil
+
         # Used to identify hold-drag pattern used for custom line and plane inputs.
-        @mouse_down = false
+        @mouse_down = nil
 
         # Used to track the previous tool operation so it can be altered by
         # keyboard input.
@@ -68,12 +76,18 @@ module Eneroth
           @input_point.draw(view)
           view.tooltip = @input_point.tooltip
         end
+        @reference_input_point.draw(view) if @reference_input_point.valid?
 
         case @stage
         when STAGE_PICK_ROTATION_AXIS
           if @rotation_axis
             DrawHelper.set_color_from_vector(view, @rotation_axis[1])
             DrawHelper.draw_circle_px_size(view, *@rotation_axis, 50)
+            if dragging_mouse?
+              view.line_stipple = "."
+              view.draw(GL_LINES, line_to_points(@rotation_axis))
+              view.line_stipple = ""
+            end
           end
         when STAGE_PICK_START_POINT
           if @input_point.valid?
@@ -114,14 +128,16 @@ module Eneroth
 
       # @api
       # @see https://ruby.sketchup.com/Sketchup/ModelObserver.html
-      def onLButtonDown(_flags, _x, _y, _view)
-        @mouse_down = true # TODO: If not in use, remove this.
+      def onLButtonDown(_flags, x, y, _view)
+        @mouse_down = Geom::Point3d.new(x, y, 0)
+        @reference_input_point.copy!(@input_point)
       end
 
       # @api
       # @see https://ruby.sketchup.com/Sketchup/Tool.html
       def onLButtonUp(_flags, _x, _y, view)
-        @mouse_down = false
+        @mouse_down = nil
+        @reference_input_point.clear
 
         case @stage
         when STAGE_PICK_OBJECT
@@ -159,6 +175,8 @@ module Eneroth
       # @api
       # @see https://ruby.sketchup.com/Sketchup/Tool.html
       def onMouseMove(_flags, x, y, view)
+        @mouse_position = Geom::Point3d.new(x, y, 0)
+
         case @stage
         when STAGE_PICK_OBJECT
           view.model.selection.clear
@@ -169,16 +187,26 @@ module Eneroth
           hovered = nil if hovered.is_a?(Sketchup::Axes)
           view.model.selection.add(hovered) if hovered
         when STAGE_PICK_ROTATION_AXIS
-          @rotation_axis = nil
-          @input_point.pick(view, x, y)
-          # REVIEW: Consider supporting point on face and empty space too.
-          # Would make tool more open but maybe more confusing in my use case.
-          hovered = @input_point.edge
-          if hovered
-            @rotation_axis = [@input_point.position, hovered.line[1].transform(@input_point.transformation)]
+          if dragging_mouse?
+            # Special input that allows the user to select any direction in space.
+            @input_point.pick(view, x, y, @reference_input_point)
+            @rotation_axis = points_to_line(@reference_input_point.position, @input_point.position)
+          else
+            # Basic input that picks a rotational plane from the hovered entity.
+            # Default to the hovered edge as this tool is specialized for paper
+            # pop up models and we almost always want to rotate a piece of paper
+            # around its edge.
+
+            # REVIEW: Consider picking from inside face too, but that might
+            # affect the scope of the tool to a more generic rotate tool and
+            # lead to confusion why the tool even picks from edges.
+            @rotation_axis = nil
+            @input_point.pick(view, x, y)
+            hovered = @input_point.edge
+            if hovered
+              @rotation_axis = [@input_point.position, hovered.line[1].transform(@input_point.transformation)]
+            end
           end
-          # REVIEW: Consider adding mouse drag support for any custom plane.
-          # TODO: Or otherwise remove it from the statusbar text.
         when STAGE_PICK_START_POINT
           @input_point.pick(view, x, y)
           # Can't pick a rotation start point at the rotation axis.
@@ -248,6 +276,20 @@ module Eneroth
         texts[0] += " Alt = Alternate fold direction. " if @previosly_modified_objects
 
         Sketchup.status_text = texts[@stage]
+      end
+
+      def dragging_mouse?
+        @mouse_down && @mouse_down.distance(@mouse_position) > DRAG_THRESHOLD
+      end
+
+      # TODO: Use these methods when possible
+
+      def points_to_line(point1, point2)
+        [point1, point2 - point1]
+      end
+
+      def line_to_points(line)
+        [line[0], line[0].offset(line[1])]
       end
 
       def rotate_objects(view)
