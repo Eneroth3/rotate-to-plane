@@ -100,6 +100,11 @@ module Eneroth
           if @target_plane
             DrawHelper.set_color_from_vector(view, @target_plane[1])
             DrawHelper.draw_square_px_size(view, *@target_plane, 50)
+            if dragging_mouse?
+              view.line_stipple = "."
+              view.draw(GL_LINES, line_to_points(@target_plane))
+              view.line_stipple = ""
+            end
           end
         end
       end
@@ -215,32 +220,37 @@ module Eneroth
           # Would make tool make tool more intuitive in my use case but a bit
           # more limited.
         when STAGE_PICK_TARGET_PLANE
-          @target_plane = nil
-          @input_point.pick(view, x, y)
-          # REVIEW: Support empty space for ground plane?
-
-          if @input_point.edge
-            # Assume a vertical plane from edge.
-            line = @input_point.edge.line.map { |c| c.transform(@input_point.transformation) }
-            # Ignore vertical edges.
-            unless line[1].parallel?(view.model.axes.zaxis)
-              horizontal_tangent = line[1] * view.model.axes.zaxis
-              @target_plane = [@input_point.position, horizontal_tangent]
+          if dragging_mouse?
+            # Special input that allows the user to select any direction in space.
+            @input_point.pick(view, x, y, @reference_input_point)
+            @target_plane = points_to_plane(@reference_input_point.position, @input_point.position)
+          else
+            # Basic input that picks a target plane from the hovered entity.
+            @target_plane = nil
+            @input_point.pick(view, x, y)
+            if @input_point.edge
+              # Try to extrapolate a vertical plane from a non-vertical hovered
+              # edge. For paper pop-up models we typically want to fold to a
+              # symmetry plane, not an existing face.
+              line = @input_point.edge.line.map { |c| c.transform(@input_point.transformation) }
+              unless line[1].parallel?(view.model.axes.zaxis)
+                horizontal_tangent = line[1] * view.model.axes.zaxis
+                @target_plane = [@input_point.position, horizontal_tangent]
+              end
+            end
+            if !@target_plane && @input_point.face
+              # FIXME: InputPoint.transformation returns a transformation that is
+              # not for the face if the point is not on the face but floating on
+              # top of it.
+              # See https://github.com/Eneroth3/inputpoint-refinement-lib
+              # Also, the position would be undesired in such case.
+              @target_plane = [
+                @input_point.position,
+                GeomHelper.transform_normal(@input_point.face.normal, @input_point.transformation)
+              ]
+              # REVIEW: Support empty space for ground plane?
             end
           end
-          if !@target_plane && @input_point.face
-            # FIXME: InputPoint.transformation returns a transformation that is
-            # not for the face if the point is not on the face but floating on
-            # top of it.
-            # See https://github.com/Eneroth3/inputpoint-refinement-lib
-            # Also, the position would be undesired in such case.
-            @target_plane = [
-              @input_point.position,
-              GeomHelper.transform_normal(@input_point.face.normal, @input_point.transformation)
-            ]
-          end
-          # REVIEW: Consider adding mouse drag support for any custom plane.
-          # TODO: Or otherwise remove it from the statusbar text.
         end
         view.invalidate
       end
@@ -283,10 +293,12 @@ module Eneroth
       end
 
       # TODO: Use these methods when possible
+      # FIXME: Handle zero length vector when points are the same
 
       def points_to_line(point1, point2)
         [point1, point2 - point1]
       end
+      alias points_to_plane points_to_line
 
       def line_to_points(line)
         [line[0], line[0].offset(line[1])]
