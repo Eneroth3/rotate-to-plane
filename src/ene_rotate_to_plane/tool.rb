@@ -4,6 +4,7 @@ module Eneroth
   module RotateToPlane
     Sketchup.require "#{PLUGIN_ROOT}/geom_helper"
     Sketchup.require "#{PLUGIN_ROOT}/draw_helper"
+    Sketchup.require "#{PLUGIN_ROOT}/input_point_helper"
 
     # Tool for rotating objects so a point lands on a target plane.
     # This "From Radius" or "From Circle" inference is missing in native Rotate
@@ -237,15 +238,7 @@ module Eneroth
               end
             end
             if !@target_plane && @input_point.face
-              # FIXME: InputPoint.transformation returns a transformation that is
-              # not for the face if the point is not on the face but floating on
-              # top of it (e.g. From Point inference).
-              # See https://github.com/Eneroth3/inputpoint-refinement-lib
-              # Also, the position would be undesired in such case.
-              @target_plane = [
-                @input_point.position,
-                GeomHelper.transform_normal(@input_point.face.normal, @input_point.transformation)
-              ]
+              @target_plane = [@input_point.position, InputPointHelper.normal(view, x, y)]
             end
             # Could easily pick from ground plane from here but choosing for now
             # not to. See README.
