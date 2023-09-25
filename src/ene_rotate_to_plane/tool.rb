@@ -149,8 +149,9 @@ module Eneroth
         case @stage
         when STAGE_PICK_OBJECT
           unless view.model.selection.empty?
-            # This is where the statusbar text stops mentioning Alt for changing
-            # the direction of any previous rotation.
+            # If statusbar was previously mentioning Alt for changing the the
+            # direction of the previous rotation, it should stop doing so here
+            # as we are now working on a new selection.
             @previosly_modified_objects = nil
             progress_stage
           end
@@ -290,7 +291,6 @@ module Eneroth
         @mouse_down && @mouse_down.distance(@mouse_position) > DRAG_THRESHOLD
       end
 
-      # TODO: Use these methods when possible
       # FIXME: Handle zero length vector when points are the same
 
       def points_to_line(point1, point2)
