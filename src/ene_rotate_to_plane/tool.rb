@@ -5,7 +5,9 @@ module Eneroth
     Sketchup.require "#{PLUGIN_ROOT}/geom_helper"
     Sketchup.require "#{PLUGIN_ROOT}/draw_helper"
 
-    # Tool for rotating objects.
+    # Tool for rotating objects so a point lands on a target plane.
+    # This "From Radius" or "From Circle" inference is missing in native Rotate
+    # tool.
     class Tool
       # REVIEW: Can we abstract tool stages, code each of them in one place and not
       # have them all intermingled?
@@ -206,25 +208,14 @@ module Eneroth
               # of paper around its edge.
               @rotation_axis = [@input_point.position, @input_point.edge.line[1].transform(@input_point.transformation)]
             end
-            if !@rotation_axis && @input_point.face
-              # FIXME: InputPoint.transformation returns a transformation that is
-              # not for the face if the point is not on the face but floating on
-              # top of it (e.g. From Point inference).
-              # See https://github.com/Eneroth3/inputpoint-refinement-lib
-              # Also, the position would be undesired in such case.
-              @rotation_axis = [
-                @input_point.position,
-                GeomHelper.transform_normal(@input_point.face.normal, @input_point.transformation)
-              ]
-            end
+            # Could easily pick axis from hovered face here (see code for target
+            # plane) but choosing for now not to. See README.
+            # The same can be said about picking from the ground plane.
           end
         when STAGE_PICK_START_POINT
           @input_point.pick(view, x, y)
           # Can't pick a rotation start point at the rotation axis.
           @input_point.clear if @input_point.position.on_line?(@rotation_axis)
-          # REVIEW: Consider only allowing input points within the selection.
-          # Would make tool make tool more intuitive in my paper pop up use case
-          # but more limited.
         when STAGE_PICK_TARGET_PLANE
           if dragging_mouse?
             # Special input that allows the user to select any direction in space.
@@ -255,7 +246,8 @@ module Eneroth
                 GeomHelper.transform_normal(@input_point.face.normal, @input_point.transformation)
               ]
             end
-            # REVIEW: Support empty space for ground plane?
+            # Could easily pick from ground plane from here but choosing for now
+            # not to. See README.
           end
         end
         view.invalidate
