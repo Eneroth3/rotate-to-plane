@@ -198,18 +198,24 @@ module Eneroth
             @rotation_axis = points_to_line(@reference_input_point.position, @input_point.position)
           else
             # Basic input that picks a rotational plane from the hovered entity.
-            # Default to the hovered edge as this tool is specialized for paper
-            # pop up models and we almost always want to rotate a piece of paper
-            # around its edge.
-
-            # REVIEW: Consider picking from inside face too, but that might
-            # affect the scope of the tool to a more generic rotate tool and
-            # lead to confusion why the tool even picks from edges.
             @rotation_axis = nil
             @input_point.pick(view, x, y)
-            hovered = @input_point.edge
-            if hovered
-              @rotation_axis = [@input_point.position, hovered.line[1].transform(@input_point.transformation)]
+            if @input_point.edge
+              # Default to the hovered edge as this tool is specialized for
+              # paper pop up models and we almost always want to rotate a piece
+              # of paper around its edge.
+              @rotation_axis = [@input_point.position, @input_point.edge.line[1].transform(@input_point.transformation)]
+            end
+            if !@rotation_axis && @input_point.face
+              # FIXME: InputPoint.transformation returns a transformation that is
+              # not for the face if the point is not on the face but floating on
+              # top of it (e.g. From Point inference).
+              # See https://github.com/Eneroth3/inputpoint-refinement-lib
+              # Also, the position would be undesired in such case.
+              @rotation_axis = [
+                @input_point.position,
+                GeomHelper.transform_normal(@input_point.face.normal, @input_point.transformation)
+              ]
             end
           end
         when STAGE_PICK_START_POINT
@@ -217,8 +223,8 @@ module Eneroth
           # Can't pick a rotation start point at the rotation axis.
           @input_point.clear if @input_point.position.on_line?(@rotation_axis)
           # REVIEW: Consider only allowing input points within the selection.
-          # Would make tool make tool more intuitive in my use case but a bit
-          # more limited.
+          # Would make tool make tool more intuitive in my paper pop up use case
+          # but more limited.
         when STAGE_PICK_TARGET_PLANE
           if dragging_mouse?
             # Special input that allows the user to select any direction in space.
@@ -241,15 +247,15 @@ module Eneroth
             if !@target_plane && @input_point.face
               # FIXME: InputPoint.transformation returns a transformation that is
               # not for the face if the point is not on the face but floating on
-              # top of it.
+              # top of it (e.g. From Point inference).
               # See https://github.com/Eneroth3/inputpoint-refinement-lib
               # Also, the position would be undesired in such case.
               @target_plane = [
                 @input_point.position,
                 GeomHelper.transform_normal(@input_point.face.normal, @input_point.transformation)
               ]
-              # REVIEW: Support empty space for ground plane?
             end
+            # REVIEW: Support empty space for ground plane?
           end
         end
         view.invalidate
