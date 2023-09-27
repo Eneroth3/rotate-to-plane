@@ -8,6 +8,13 @@ This is an inference ("On Radius") that's missing in the native Rotate tool.
 Streamlined to rotate pieces of paper in pop up models to the right angles, but
 can also be used in more generic cases such as leaning a ladder against a wall.
 
+Activated from **Extensions > Eneroth Rotate to Plane** or its toolbar.
+
+Select an object to rotate, a rotational axis from an edge, a rotation start
+and a target plane to rotate towards.
+
+Source code available at [GitHub](https://github.com/Eneroth3/rotate-to-plane).
+
 # Scope
 
 This tool is created and streamlined for paper pop up models, i.e. rotating
