@@ -254,6 +254,11 @@ module Eneroth
         update_statusbar
       end
 
+      # @see https://extensions.sketchup.com/pl/content/eneroth-tool-memory
+      def ene_tool_cycler_icon
+        "#{PLUGIN_ROOT}/icons/rotate_to_plane.svg"
+      end
+
       private
 
       def progress_stage
