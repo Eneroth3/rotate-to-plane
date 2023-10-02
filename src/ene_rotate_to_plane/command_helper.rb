@@ -12,7 +12,7 @@ module Eneroth
       # @param basepath [String] Path excluding the file extension.
       def self.add_icon(command, basepath)
         extension =
-          if Sketchup.version.to_i > 15
+          if Sketchup.version.to_i < 16
             ".png"
           elsif Sketchup.platform == :platform_win
             ".svg"
