@@ -23,7 +23,7 @@ module Eneroth
 
     EXTENSION.creator     = "Eneroth"
     EXTENSION.description = "Rotate point onto plane. Useful to lean a ladder against a wall or for paper pop-ups."
-    EXTENSION.version     = "1.0.0"
+    EXTENSION.version     = "1.0.1"
     EXTENSION.copyright   = "2023, #{EXTENSION.creator}"
     Sketchup.register_extension(EXTENSION, true)
   end
