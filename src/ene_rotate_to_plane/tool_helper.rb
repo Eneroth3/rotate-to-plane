@@ -9,7 +9,8 @@ module Eneroth
       # @param tool_class [Class]
       #   A class implementing the abstract `Sketchup::Tool`.
       def self.activate(tool_class)
-        Sketchup.active_model.select_tool(tool_class.new)
+        model = Sketchup.active_model
+        model.select_tool(tool_class.new) if model
       end
 
       # Test if a Ruby tool is currently active.
@@ -19,7 +20,9 @@ module Eneroth
       #
       # @since SketchUp 2019
       def self.active?(tool_class)
-        Sketchup.active_model.tools.active_tool.is_a?(tool_class)
+        model = Sketchup.active_model
+
+        model && model.tools.active_tool.is_a?(tool_class)
       end
 
       # Create a command object for activating a tool.
